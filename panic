@@ -13,6 +13,11 @@ set -euo pipefail
 
 VERSION="0.1.0"
 
+# Локер экрана. По умолчанию CGSession -suspend (реальная блокировка до login-window,
+# не зависит от настройки «требовать пароль» — в отличие от pmset/screensaver).
+# Переопределяемо (тесты/иные механизмы блокировки).
+PANIC_CGSESSION="${PANIC_CGSESSION:-/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession}"
+
 # === BEGIN vendored common (pin: 2e3d2dd5b36251bdcb1a8ffd348b63ece5fa7aab) ===
 # shellcheck shell=bash
 # common.sh — переиспользуемые примитивы экосистемы Paranoid Tools.
@@ -155,11 +160,58 @@ EOF
       ;;
     en:unknown_cmd) printf 'Unknown command: %s' "$1" ;;
     ru:unknown_cmd) printf 'Unknown command: %s' "$1" ;;
+    en:detach_fail) printf 'could not detach %s (may have open files).' "$1" ;;
+    ru:detach_fail) printf 'не удалось размонтировать %s (возможно, открыты файлы).' "$1" ;;
+    en:hard_deferred) echo '--hard is not implemented yet (pack 3): cloud daemons / recent items untouched.' ;;
+    ru:hard_deferred) echo '--hard пока не реализован (pack 3): cloud-демоны / recent items не тронуты.' ;;
+    en:now_report) printf 'panic: detached %s disk image(s), cleared clipboard, locked screen.' "$1" ;;
+    ru:now_report) printf 'panic: размонтировано образов: %s, буфер очищен, экран заперт.' "$1" ;;
     *) echo "$key" ;;
   esac
 }
 
 usage() { t usage; }
+
+# Точки монтирования смонтированных disk image'ов под /Volumes (vault'ы, dmg).
+# Парсим `hdiutil info`: dev-строки TAB-разделены → mountpoint (3-е поле) корректен
+# даже с пробелами. Фильтр /Volumes/ исключает system-образы (монтируются вне /Volumes).
+_mounted_images() {
+  hdiutil info 2>/dev/null | awk -F'\t' '/^\/dev\/disk/ && $3 ~ /^\/Volumes\// {print $3}'
+}
+
+# Блокировка экрана через настраиваемый локер.
+_lock_screen() {
+  "$PANIC_CGSESSION" -suspend >/dev/null 2>&1 || true
+}
+
+# Kill-switch: спрятать и запереть. БЕЗ confirm — это режим паники (скорость важнее);
+# защита от случайного запуска — явный verb `now`. detach -force при открытых файлах
+# может повредить данные: осознанный trade-off (см. README «Scope & limitations»).
+cmd_now() {
+  require_macos
+  local hard=0 a
+  for a in "$@"; do
+    case "$a" in --hard) hard=1 ;; esac
+  done
+
+  # 1. Размонтировать все смонтированные disk image'ы (force — паника важнее открытых файлов).
+  local n=0 mp
+  while IFS= read -r mp; do
+    [[ -n "$mp" ]] || continue
+    if hdiutil detach -force "$mp" >/dev/null 2>&1; then
+      n=$((n + 1))
+    else
+      warn "$(t detach_fail "$mp")"
+    fi
+  done < <(_mounted_images)
+
+  # 2. Очистить буфер обмена. 3. Заблокировать экран.
+  pbcopy </dev/null >/dev/null 2>&1 || true
+  _lock_screen
+
+  if [[ "$hard" == "1" ]]; then warn "$(t hard_deferred)"; fi
+  info "$(t now_report "$n")"
+}
 
 cmd_version() { echo "panic $VERSION"; }
 
@@ -170,8 +222,7 @@ main() {
   case "$cmd" in
     version)       cmd_version "$@" ;;
     help|--help|-h) usage ;;
-    # now — ядро kill-switch, реализуется в следующем паке (pack 2).
-    now)           err "panic: 'now' пока не реализован (pack 2)"; exit 2 ;;
+    now)           cmd_now "$@" ;;
     *) t unknown_cmd "$cmd" >&2; echo >&2; usage >&2; exit 1 ;;
   esac
 }

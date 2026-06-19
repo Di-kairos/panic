@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Стаб экрана-локера (подставляется через $PANIC_CGSESSION). Фиксирует вызов.
+printf 'cgsession %s\n' "$*" >>"${VW_STUB_LOG:-/dev/null}"
+exit 0

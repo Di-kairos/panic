@@ -46,10 +46,8 @@ setup() {
   [[ "$output" == *"синхронен"* ]] || [[ "$output" == *"sync"* ]]
 }
 
-@test "now is deferred (exit 2) — pack 1/2 boundary" {
-  run bash "$SCRIPT" now
-  [ "$status" -eq 2 ]
-}
+# Ядро `now` тестируется в now.bats СО СТАБАМИ — без них `panic now` выполнил бы
+# реальную панику (detach образов + lock) на хосте. Здесь только scaffold/dispatcher.
 
 @test "vendor --check detects drift in the vendored block" {
   work="$(mktemp -d)"; mkdir -p "$work/tools"
