@@ -11,6 +11,23 @@ securetrash, размонтировать тома, очистить буфер 
 > обмена, блокирует экран. **`--hard`** дополнительно прибивает cloud-демоны и чистит
 > Recent items.
 
+## Установка
+
+Checksum-verified установка с релизного тега — verify-then-run:
+
+```bash
+curl -fsSLO https://github.com/Di-kairos/panic/releases/latest/download/install.sh
+curl -fsSLO https://github.com/Di-kairos/panic/releases/latest/download/SHA256SUMS
+shasum -a 256 -c SHA256SUMS --ignore-missing   # проверить сам install.sh
+less install.sh                                  # прочитать глазами
+bash install.sh                                  # тянет panic + сумму, проверяет, ставит
+```
+
+`install.sh` тянет бинарь и `SHA256SUMS` из неизменного релизного тега и проверяет хеш
+**до** установки. Переменные: `PANIC_VERSION`, `PANIC_DEST`, `PANIC_BASE_URL`.
+
+> Публичная установка доступна после первого публичного релиза (`git tag v0.1.0`).
+
 ## Использование
 
 ```bash
