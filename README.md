@@ -1,70 +1,108 @@
+**English** · [Русский](README.ru.md)
+
 # panic
 
-Kill-switch на один шаг — часть экосистемы [Paranoid Tools](https://github.com/Di-kairos/paranoid-tools).
+One-step kill-switch — hide and lock everything with a single command.
 
-Сценарий: граница / принуждение / «кто-то идёт». Одной командой `panic now` (или
-хоткеем через launchd) **спрятать и запереть** всё: закрыть открытые vault'ы
-securetrash, размонтировать тома, очистить буфер обмена, заблокировать экран.
+[![CI](https://github.com/Di-kairos/panic/actions/workflows/ci.yml/badge.svg)](https://github.com/Di-kairos/panic/actions/workflows/ci.yml)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![platform](https://img.shields.io/badge/platform-macOS-blue)
+![shellcheck](https://img.shields.io/badge/shellcheck-passing-brightgreen)
 
-> **Статус: ранний (v0.1.0, work in progress).** Готов каркас + **ядро `now`**:
-> размонтирует все смонтированные disk image'ы (`hdiutil detach -force`), чистит буфер
-> обмена, блокирует экран. **`--hard`** дополнительно прибивает cloud-демоны и чистит
-> Recent items.
+Part of the [Paranoid Tools](https://github.com/Di-kairos/paranoid-tools) ecosystem.
 
-## Установка
+The scenario: a border crossing, coercion, "someone's coming." A single
+`panic now` (or a hotkey wired through launchd) **hides and locks** everything:
+closes open securetrash vaults, detaches volumes, clears the clipboard, locks the
+screen.
 
-Checksum-verified установка с релизного тега — verify-then-run:
+## Install
 
-```bash
-curl -fsSLO https://github.com/Di-kairos/panic/releases/latest/download/install.sh
-curl -fsSLO https://github.com/Di-kairos/panic/releases/latest/download/SHA256SUMS
-shasum -a 256 -c SHA256SUMS --ignore-missing   # проверить сам install.sh
-less install.sh                                  # прочитать глазами
-bash install.sh                                  # тянет panic + сумму, проверяет, ставит
-```
-
-`install.sh` тянет бинарь и `SHA256SUMS` из неизменного релизного тега и проверяет хеш
-**до** установки. Переменные: `PANIC_VERSION`, `PANIC_DEST`, `PANIC_BASE_URL`.
-
-> Публичная установка доступна после первого публичного релиза (`git tag v0.1.0`).
-
-## Использование
+Checksum-verified install from the release tag — verify-then-run (don't trust, verify):
 
 ```bash
-panic now           # спрятать и запереть сейчас
-panic now --hard    # + прибить cloud-демоны, почистить «Recent items»
-panic version
+base=https://github.com/Di-kairos/panic/releases/latest/download
+curl -fsSLO "$base/install.sh"
+curl -fsSLO "$base/SHA256SUMS"
+shasum -a 256 -c SHA256SUMS --ignore-missing   # verifies install.sh itself
+less install.sh                                  # read it
+bash install.sh                                  # pulls panic + checksum, verifies, installs
 ```
 
-Явный verb `now` выбран намеренно: kill-switch не должен срабатывать от случайного
-`panic` без аргументов (bare `panic` → usage).
+Quick form (one line):
 
-## Архитектура
+```bash
+curl -fsSL https://github.com/Di-kairos/panic/releases/latest/download/install.sh | bash
+```
 
-- Single-file Bash, ноль зависимостей. Нативные примитивы macOS (`hdiutil`,
-  `pbcopy`, `osascript`/`pmset` для lock).
-- Общее ядро (`lib/common.sh`) **вендорится** из securetrash inline, пиннуто к git-ref;
-  `tools/vendor-common.sh --check` ловит дрейф в CI. См. `paranoid-tools/README.md`.
-- Переиспользует close/detach-логику из vaultwatch (закрытие сессии vault).
+`install.sh` pulls the binary and `SHA256SUMS` from the immutable release tag (not the
+moving `main` branch) and verifies the hash **before** installing. Environment variables:
+`PANIC_VERSION` (pin a specific tag instead of `latest`), `PANIC_DEST` (install path),
+`PANIC_BASE_URL` (override the source entirely, for forks/tests).
+
+> **Integrity vs authenticity (honest scope).** The checksum proves the binary matches the
+> `SHA256SUMS` published in the *same release* — it catches corruption, partial/cached
+> tampering, and stops you running code off the moving `main` branch. It does **not** by
+> itself defeat an attacker who can rewrite *both* the binary and its checksum at the
+> source, nor does it prove *who* published them. For that you need a signature.
+
+## Usage
+
+```bash
+panic now           # hide & lock now
+panic now --hard    # + kill cloud daemons, clear Recent items
+panic version       # print the version (also -v / --version)
+panic --help        # print usage (also -h / help)
+```
+
+The explicit `now` verb is deliberate: a kill-switch must not fire from an accidental
+bare `panic` with no arguments (bare `panic` prints usage and exits non-zero).
+
+What `panic now` does:
+
+1. detaches every mounted disk image under `/Volumes` (`hdiutil detach -force`);
+2. clears the clipboard (`pbcopy </dev/null`);
+3. locks the screen (`CGSession -suspend` — the real login window).
+
+With `--hard` it additionally kills cloud daemons (Dropbox, OneDrive, iCloud's `bird`,
+Google Drive) and clears the global Recent items (shared file lists).
+
+Wire `panic now` to a hotkey via launchd for true one-step activation.
+
+## How it works
+
+- Single-file Bash, zero dependencies. Native macOS primitives only (`hdiutil`,
+  `pbcopy`, `CGSession` for the screen lock).
+- The shared core (`lib/common.sh`) is **vendored** inline from securetrash, pinned to a
+  git ref; `tools/vendor-common.sh --check` catches drift in CI. See
+  [`paranoid-tools/README.md`](https://github.com/Di-kairos/paranoid-tools).
+- Reuses the close/detach logic from vaultwatch (closing a vault session).
 
 ## Scope & limitations
 
-Базовый принцип экосистемы: честно про пределы. panic **прячет и запирает**, но:
+Honesty about the limits is the whole point of the ecosystem. panic **hides and locks**,
+but:
 
-- **не уничтожает** данные и **не чистит swap** (для уничтожения — `securetrash`);
-  фрагменты plaintext могли уйти в swap и остаться там до перезаписи.
-- `detach -force` при открытых файлах может **повредить данные** — осознанный
-  trade-off режима паники (спрятать важнее), пользователь должен это знать. Нет confirm:
-  скорость важнее; защита от случайного запуска — явный verb `now`.
-- размонтирует **disk image'ы под `/Volumes`** (vault'ы/dmg); system-образы вне `/Volumes`
-  не трогает. Физические внешние диски — в следующих паках.
-- `--hard` чистит **глобальные** Recent items (shared file lists); per-app «недавние»
-  внутри приложений этим НЕ стираются — честно про предел.
-- блокировка экрана — `CGSession -suspend` (реальный login-window, не зависит от
-  настройки «требовать пароль»); переопределяемо через `PANIC_CGSESSION`.
-- не имитирует «полное стирание за секунду» — это была бы ложь.
+- It does **not destroy** data and does **not wipe swap** (use `securetrash` to destroy);
+  plaintext fragments may already have spilled into swap and stay there until overwritten.
+- `detach -force` can **corrupt data** if files are open — a deliberate panic-mode
+  trade-off (hiding matters more), and you should know it. There is no confirmation prompt:
+  speed wins; the guard against accidental runs is the explicit `now` verb.
+- It detaches **disk images under `/Volumes`** (vaults/dmg); system images mounted outside
+  `/Volumes` are left untouched. Physical external drives are a later pack.
+- `--hard` clears **global** Recent items (shared file lists); per-app "recents" stored
+  inside individual apps are **not** wiped by this — honest about the limit.
+- The screen lock uses `CGSession -suspend` (the real login window, independent of the
+  "require password" setting); overridable via `PANIC_CGSESSION`.
+- It does not pretend to "fully wipe in a second" — that would be a lie.
 
-## Windows-эквивалент
+## Windows equivalent
 
-Планируется во вторую очередь: lock workstation, dismount BitLocker/VeraCrypt-томов,
-очистка clipboard. Порт — как у securetrash/vaultwatch.
+Planned as a follow-up: lock the workstation, dismount BitLocker/VeraCrypt volumes, clear
+the clipboard. The port follows the same approach as securetrash/vaultwatch.
+
+## License
+
+Released under the [MIT](LICENSE) license — provided "as is," without warranty of any kind
+(see the license file). Report a vulnerability via [SECURITY.md](SECURITY.md). Contributions
+are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
