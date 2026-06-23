@@ -49,6 +49,7 @@ moving `main` branch) and verifies the hash **before** installing. Environment v
 ## Usage
 
 ```bash
+panic status        # read-only preflight: show what `panic now` would affect
 panic now           # hide & lock now
 panic now --hard    # + kill cloud daemons, clear Recent items
 panic version       # print the version (also -v / --version)

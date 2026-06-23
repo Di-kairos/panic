@@ -47,6 +47,7 @@ curl -fsSL https://github.com/Di-kairos/panic/releases/latest/download/install.s
 ## Использование
 
 ```bash
+panic status        # только чтение: предпросмотр — что затронет `panic now`
 panic now           # спрятать и запереть сейчас
 panic now --hard    # + прибить cloud-демоны, почистить «Recent items»
 panic version       # показать версию (также -v / --version)
