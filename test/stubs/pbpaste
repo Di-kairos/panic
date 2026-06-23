@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Стаб pbpaste: возвращает содержимое буфера ($STUB_CLIPBOARD) или пустую строку.
+echo -n "${STUB_CLIPBOARD:-}"
+exit 0

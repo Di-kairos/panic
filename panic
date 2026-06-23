@@ -142,6 +142,7 @@ t() {
 Usage: panic <command> [args]
 
 Commands:
+  status              Read-only preflight: show what `panic now` would affect.
   now [--hard]        Hide & lock now: close vaults, detach volumes, clear
                       clipboard, lock screen. --hard also kills cloud daemons.
   version             Show the version
@@ -155,6 +156,7 @@ EOF
 Usage: panic <command> [args]
 
 Commands:
+  status              Только чтение: что затронет `panic now` (безопасно, предпросмотр).
   now [--hard]        Спрятать и запереть сейчас: закрыть vault'ы, размонтировать
                       тома, очистить буфер, заблокировать экран. --hard также
                       прибивает cloud-демоны.
@@ -166,6 +168,22 @@ EOF
       ;;
     en:unknown_cmd) printf 'Unknown command: %s' "$1" ;;
     ru:unknown_cmd) printf 'Unknown command: %s' "$1" ;;
+    en:status_header)    echo 'panic status — read-only preflight (no changes made)' ;;
+    ru:status_header)    echo 'panic status — только чтение, предпросмотр (изменений нет)' ;;
+    en:status_images)    printf '  disk images mounted: %s — would be detached by `panic now`' "$1" ;;
+    ru:status_images)    printf '  смонтированных образов: %s — будут размонтированы `panic now`' "$1" ;;
+    en:status_no_images) echo  '  disk images: none mounted' ;;
+    ru:status_no_images) echo  '  образов: не смонтировано' ;;
+    en:status_clip_has)  echo  '  clipboard: non-empty — would be cleared' ;;
+    ru:status_clip_has)  echo  '  буфер обмена: не пуст — будет очищен' ;;
+    en:status_clip_empty) echo '  clipboard: empty' ;;
+    ru:status_clip_empty) echo '  буфер обмена: пуст' ;;
+    en:status_fv_on)     echo  '  FileVault: ON — crypto-shred effective on vault close' ;;
+    ru:status_fv_on)     echo  '  FileVault: ВКЛ — crypto-shred эффективен при закрытии vault' ;;
+    en:status_fv_off)    echo  '  FileVault: OFF — disk not encrypted (vault at risk if drive seized)' ;;
+    ru:status_fv_off)    echo  '  FileVault: ВЫКЛ — диск не зашифрован (vault под угрозой при изъятии)' ;;
+    en:status_cloud)     printf '  cloud daemon running: %s — would be killed by `panic now --hard`' "$1" ;;
+    ru:status_cloud)     printf '  cloud-демон запущен: %s — будет убит `panic now --hard`' "$1" ;;
     en:detach_fail) printf 'could not detach %s (may have open files).' "$1" ;;
     ru:detach_fail) printf 'не удалось размонтировать %s (возможно, открыты файлы).' "$1" ;;
     en:now_hard) echo 'panic --hard: cloud daemons killed, recent items cleared.' ;;
@@ -239,6 +257,46 @@ cmd_now() {
   if [[ "$hard" == "1" ]]; then info "$(t now_hard)"; fi
 }
 
+cmd_status() {
+  require_macos
+  info "$(t status_header)"
+
+  # Смонтированные disk image'ы (vault'ы, dmg) — `panic now` размонтирует их.
+  local images=() mp
+  while IFS= read -r mp; do
+    [[ -n "$mp" ]] && images+=("$mp")
+  done < <(_mounted_images)
+  if [[ ${#images[@]} -gt 0 ]]; then
+    info "$(t status_images "${#images[@]}")"
+    for mp in "${images[@]}"; do printf '    %s\n' "$mp"; done
+  else
+    info "$(t status_no_images)"
+  fi
+
+  # Буфер обмена.
+  local clip_size; clip_size="$(pbpaste 2>/dev/null | wc -c | tr -d ' ')"
+  if [[ "${clip_size:-0}" -gt 0 ]]; then
+    info "$(t status_clip_has)"
+  else
+    info "$(t status_clip_empty)"
+  fi
+
+  # FileVault — честный контекст.
+  if filevault_on; then
+    info "$(t status_fv_on)"
+  else
+    warn "$(t status_fv_off)"
+  fi
+
+  # Cloud-демоны (--hard убьёт).
+  local d
+  for d in "${PANIC_CLOUD_DAEMONS[@]}"; do
+    if pgrep -x "$d" >/dev/null 2>&1; then
+      info "$(t status_cloud "$d")"
+    fi
+  done
+}
+
 cmd_version() { echo "panic $VERSION"; }
 
 main() {
@@ -246,6 +304,7 @@ main() {
   if [[ -z "$cmd" ]]; then usage; exit 1; fi
   shift || true
   case "$cmd" in
+    status)          cmd_status "$@" ;;
     version|-v|--version) cmd_version "$@" ;;
     help|--help|-h) usage ;;
     now)           cmd_now "$@" ;;
