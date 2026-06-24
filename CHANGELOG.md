@@ -5,6 +5,23 @@
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-06-24
+
+Релиз догоняет ассеты до исходников: команда `status` и hardening установщика/подписи,
+осевшие в `main` после тега `v0.1.1`, теперь попадают в публичный релиз.
+
+### Added
+- **`status`** — read-only preflight: FileVault on/off, смонтированные disk image'ы под
+  `/Volumes`, активные cloud-демоны. Показывает, что именно сделает `panic now`, ничего
+  не трогая. Безопасно звать до паники.
+
+### Security
+- **install.sh fail-closed:** отсутствие `SHA256SUMS.sig` на релизе теперь прерывает
+  установку (обход для старых релизов — `ALLOW_UNSIGNED_LEGACY=1`); отсутствие `ssh-keygen`
+  больше не молчит, а громко предупреждает, что подпись не проверена (только целостность).
+- **Подпись релиза fail-closed:** `release.yml` прерывает выпуск (`exit 1`), если
+  `RELEASE_SIGNING_KEY` не задан, — неподписанный релиз невозможен.
+
 ## [0.1.1] — 2026-06-22
 
 ### Added
@@ -45,5 +62,7 @@
   `PANIC_SFL_DIR` overrides.
 - Real-device smoke на macOS: `now` распарсил живой `hdiutil info` и размонтировал тест-образ.
 
-[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/Di-kairos/panic/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/Di-kairos/panic/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Di-kairos/panic/releases/tag/v0.1.0
