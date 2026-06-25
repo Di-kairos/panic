@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-06-25
+
+Первый выпуск с поддержкой Windows.
+
+### Added
+- **Windows PowerShell port (beta):** `windows/panic.ps1` + `windows/install.ps1`.
+  `panic now` запирает разблокированные BitLocker-тома (`Lock-BitLocker -ForceDismount`),
+  размонтирует тома VeraCrypt (`VeraCrypt /d /f`), чистит буфер обмена и блокирует экран
+  (`rundll32 user32.dll,LockWorkStation`); `--hard` дополнительно прибивает cloud-демоны
+  и чистит Recent items. `status` — read-only preflight (BitLocker on/off, разблокированные
+  тома, cloud-демоны). panic — сплошные side-effect'ы, поэтому Pester покрывает оркестровку
+  с замоканными системными примитивами (windows-CI). Поведение зеркалит macOS-версию.
+
 ## [0.1.2] — 2026-06-24
 
 Релиз догоняет ассеты до исходников: команда `status` и hardening установщика/подписи,
