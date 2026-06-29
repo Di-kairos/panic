@@ -63,7 +63,8 @@ panic --help            # показать справку (также -h / help)
 
 1. размонтирует все смонтированные disk image'ы под `/Volumes` (`hdiutil detach -force`);
 2. очищает буфер обмена (`pbcopy </dev/null`);
-3. блокирует экран (`CGSession -suspend` — реальный login-window).
+3. блокирует экран (`CGSession -suspend`, на современных macOS — fallback Ctrl+Cmd+Q
+   через `osascript`; при неудаче обоих — честно предупреждает, а не врёт об успехе).
 
 С флагом `--hard` дополнительно: прибивает cloud-демоны (Dropbox, OneDrive, iCloud `bird`,
 Google Drive) и чистит глобальные Recent items (shared file lists).
@@ -109,8 +110,12 @@ panic hotkey uninstall               # снять
   не трогает. Физические внешние диски — в следующих паках.
 - `--hard` чистит **глобальные** Recent items (shared file lists); per-app «недавние»
   внутри приложений этим НЕ стираются — честно про предел.
-- блокировка экрана — `CGSession -suspend` (реальный login-window, не зависит от
-  настройки «требовать пароль»); переопределяемо через `PANIC_CGSESSION`.
+- блокировка экрана — сначала `CGSession -suspend` (реальный login-window, не зависит от
+  настройки «требовать пароль»), затем fallback Ctrl+Cmd+Q через `osascript` на современных
+  macOS (≥12, где legacy-бандл `CGSession` удалён). Fallback требует Accessibility-доступа
+  терминалу; если упали **оба** метода — panic **не** утверждает, что экран заперт: громко
+  предупреждает и просит запереть вручную. Переопределяемо через `PANIC_CGSESSION` /
+  `PANIC_OSASCRIPT`.
 - не имитирует «полное стирание за секунду» — это была бы ложь.
 
 ## Windows (beta)

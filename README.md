@@ -116,8 +116,12 @@ but:
   `/Volumes` are left untouched. Physical external drives are a later pack.
 - `--hard` clears **global** Recent items (shared file lists); per-app "recents" stored
   inside individual apps are **not** wiped by this — honest about the limit.
-- The screen lock uses `CGSession -suspend` (the real login window, independent of the
-  "require password" setting); overridable via `PANIC_CGSESSION`.
+- The screen lock tries `CGSession -suspend` (the real login window, independent of the
+  "require password" setting), then falls back to Ctrl+Cmd+Q via `osascript` on modern
+  macOS (≥12, where the legacy `CGSession` bundle is gone). The fallback needs Accessibility
+  access for your terminal; if **both** methods fail, panic does **not** claim the screen is
+  locked — it warns loudly and tells you to lock it yourself. Overridable via
+  `PANIC_CGSESSION` / `PANIC_OSASCRIPT`.
 - It does not pretend to "fully wipe in a second" — that would be a lie.
 
 ## Windows (beta)
