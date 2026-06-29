@@ -78,8 +78,12 @@ function T {
         'ru:dismount_fail'    { return "не удалось запереть/размонтировать $A (открыты файлы или нужен admin)." }
         'en:now_hard'         { return 'panic --hard: cloud daemons killed, recent items cleared.' }
         'ru:now_hard'         { return 'panic --hard: cloud-демоны убиты, recent items очищены.' }
-        'en:now_report'       { return "panic: locked/dismounted $A encrypted volume(s), cleared clipboard, locked screen." }
-        'ru:now_report'       { return "panic: заперто/размонтировано шифр-томов: $A, буфер очищен, экран заперт." }
+        'en:now_report'       { return "panic: locked/dismounted $A encrypted volume(s), cleared clipboard." }
+        'ru:now_report'       { return "panic: заперто/размонтировано шифр-томов: $A, буфер очищен." }
+        'en:lock_ok'          { return 'screen locked.' }
+        'ru:lock_ok'          { return 'экран заперт.' }
+        'en:lock_fail'        { return 'could NOT lock the screen — lock it now (Win+L).' }
+        'ru:lock_fail'        { return 'НЕ удалось заблокировать экран — заблокируйте вручную (Win+L).' }
         default               { return $Key }
     }
 }
@@ -167,9 +171,13 @@ function Test-PnClipboardNonEmpty {
     } catch { return $false }
 }
 
-# Заблокировать экран до экрана входа (зеркало CGSession -suspend).
+# Заблокировать экран до экрана входа (зеркало _lock_screen). Честно возвращает статус:
+# LockWorkStation надёжен, но если rundll32 отсутствует/упал — не врём, что заперли.
 function Invoke-PnLockScreen {
-    & rundll32.exe 'user32.dll,LockWorkStation' 2>$null
+    try {
+        & rundll32.exe 'user32.dll,LockWorkStation' 2>$null
+        return ($LASTEXITCODE -eq 0)
+    } catch { return $false }
 }
 
 # BitLocker включён на системном диске? (зеркало filevault_on).
@@ -228,9 +236,9 @@ function Invoke-PnNow {
         catch { Write-PnWarn (T 'dismount_fail' ($vc -join ',')) }
     }
 
-    # 3. Очистить буфер. 4. Заблокировать экран.
+    # 3. Очистить буфер. 4. Заблокировать экран (честно — статус по факту).
     Invoke-PnClearClipboard
-    Invoke-PnLockScreen
+    $locked = Invoke-PnLockScreen
 
     # 5. --hard: прибить cloud-демоны + почистить Recent items.
     if ($hard) {
@@ -239,6 +247,7 @@ function Invoke-PnNow {
     }
 
     Write-PnInfo (T 'now_report' "$n")
+    if ($locked) { Write-PnInfo (T 'lock_ok') } else { Write-PnWarn (T 'lock_fail') }
     if ($hard) { Write-PnInfo (T 'now_hard') }
 }
 

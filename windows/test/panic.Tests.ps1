@@ -23,7 +23,7 @@ Describe 'panic now — orchestration' {
         Mock Invoke-PnLockBitLocker     { }
         Mock Invoke-PnDismountVeraCrypt { }
         Mock Invoke-PnClearClipboard    { }
-        Mock Invoke-PnLockScreen        { }
+        Mock Invoke-PnLockScreen        { $true }
         Mock Invoke-PnKillCloudDaemons  { }
         Mock Invoke-PnClearRecentItems  { }
     }
@@ -71,6 +71,20 @@ Describe 'panic now — orchestration' {
         { Invoke-PnNow -ArgList @() } | Should -Not -Throw
         Should -Invoke Invoke-PnClearClipboard -Times 1 -Exactly
         Should -Invoke Invoke-PnLockScreen -Times 1 -Exactly
+    }
+
+    It 'honestly reports a locked screen on success' {
+        $out = Invoke-PnNow -ArgList @()
+        ($out -join "`n") | Should -Match 'screen locked'
+    }
+
+    It 'does NOT claim a locked screen when the lock fails' {
+        # Зеркало bash-регрессии: LockWorkStation упал → не врём «locked».
+        # (Сам warn идёт в stderr через [Console]::Error и тут не ловится — проверяем
+        # главное: ложного «screen locked.» в stdout нет.)
+        Mock Invoke-PnLockScreen { $false }
+        $out = Invoke-PnNow -ArgList @()
+        ($out -join "`n") | Should -Not -Match 'screen locked\.'
     }
 }
 
