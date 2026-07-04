@@ -13,7 +13,7 @@ One-step kill-switch — hide and lock everything with a single command.
 Part of the [Paranoid Tools](https://github.com/Di-kairos/paranoid-tools) ecosystem.
 
 The scenario: a border crossing, coercion, "someone's coming." A single
-`panic now` (or a global hotkey via `panic hotkey`) **hides and locks** everything:
+`panic now` (or a global hotkey via `panic hotkey`, default `cmd + alt - p`) **hides and locks** everything:
 force-detaches mounted volumes (including open vault disk images), clears the
 clipboard, and locks the screen.
 
@@ -30,7 +30,7 @@ less install.sh                                  # read it
 bash install.sh                                  # pulls panic + checksum, verifies, installs
 ```
 
-Quick form (one line):
+Quick form (one line, **skips verification** — choose deliberately):
 
 ```bash
 curl -fsSL https://github.com/Di-kairos/panic/releases/latest/download/install.sh | bash
@@ -46,7 +46,7 @@ moving `main` branch) and verifies the hash **before** installing. Environment v
 > tampering, and stops you running code off the moving `main` branch. It does **not** by
 > itself defeat an attacker who can rewrite *both* the binary and its checksum at the
 > source, nor does it prove *who* published them. For that you need a signature. Pin a
-> specific version with `PANIC_VERSION=0.1.4` instead of `latest` for reproducibility.
+> specific version with `PANIC_VERSION=0.1.6` instead of `latest` for reproducibility.
 
 ## Usage
 
@@ -63,11 +63,15 @@ panic --help            # print usage (also -h / help)
 The explicit `now` verb is deliberate: a kill-switch must not fire from an accidental
 bare `panic` with no arguments (bare `panic` prints usage and exits non-zero).
 
+`ST_LANG=ru` switches messages to Russian (otherwise `en`, or auto-detected from the
+system locale).
+
 What `panic now` does:
 
 1. detaches every mounted disk image under `/Volumes` (`hdiutil detach -force`);
 2. clears the clipboard (`pbcopy </dev/null`);
-3. locks the screen (`CGSession -suspend` — the real login window).
+3. locks the screen (`CGSession -suspend` — the real login window; falls back to
+   Ctrl+Cmd+Q via `osascript` on macOS ≥12, where the legacy `CGSession` bundle is gone).
 
 With `--hard` it additionally kills cloud daemons (Dropbox, OneDrive, iCloud's `bird`,
 Google Drive) and clears the global Recent items (shared file lists).

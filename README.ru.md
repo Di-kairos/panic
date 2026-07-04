@@ -7,12 +7,13 @@ Kill-switch в один шаг — спрятать и запереть всё �
 [![CI](https://github.com/Di-kairos/panic/actions/workflows/ci.yml/badge.svg)](https://github.com/Di-kairos/panic/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 ![platform](https://img.shields.io/badge/platform-macOS-blue)
+![windows](https://img.shields.io/badge/Windows-beta-orange)
 ![shellcheck](https://img.shields.io/badge/shellcheck-passing-brightgreen)
 
 Часть экосистемы [Paranoid Tools](https://github.com/Di-kairos/paranoid-tools).
 
 Сценарий: граница / принуждение / «кто-то идёт». Одной командой `panic now` (или
-глобальным хоткеем через `panic hotkey`) **спрятать и запереть** всё: закрыть открытые vault'ы
+глобальным хоткеем через `panic hotkey`, по умолчанию `cmd + alt - p`) **спрятать и запереть** всё: закрыть открытые vault'ы
 securetrash, размонтировать тома, очистить буфер обмена, заблокировать экран.
 
 ## Установка
@@ -42,7 +43,8 @@ curl -fsSL https://github.com/Di-kairos/panic/releases/latest/download/install.s
 > бинарь совпадает с `SHA256SUMS` из того же релиза — это ловит повреждение,
 > частичную/кэш-подмену и не даёт запустить код с подвижной ветки `main`. Сама по себе она
 > НЕ защищает от атакующего, способного переписать *и* бинарь, *и* его сумму в источнике,
-> и НЕ доказывает, *кто* их опубликовал. Для этого нужна подпись.
+> и НЕ доказывает, *кто* их опубликовал. Для этого нужна подпись. Зафиксируй конкретную
+> версию через `PANIC_VERSION=0.1.6` вместо `latest` для воспроизводимости.
 
 ## Использование
 
