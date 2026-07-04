@@ -14,8 +14,8 @@ Part of the [Paranoid Tools](https://github.com/Di-kairos/paranoid-tools) ecosys
 
 The scenario: a border crossing, coercion, "someone's coming." A single
 `panic now` (or a global hotkey via `panic hotkey`) **hides and locks** everything:
-closes open securetrash vaults, detaches volumes, clears the clipboard, locks the
-screen.
+force-detaches mounted volumes (including open vault disk images), clears the
+clipboard, and locks the screen.
 
 ## Install
 
@@ -100,7 +100,9 @@ hotkey won't fire.
 - The shared core (`lib/common.sh`) is **vendored** inline from securetrash, pinned to a
   git ref; `tools/vendor-common.sh --check` catches drift in CI. See
   [`paranoid-tools/README.md`](https://github.com/Di-kairos/paranoid-tools).
-- Reuses the close/detach logic from vaultwatch (closing a vault session).
+- Force-detaches mounted disk images under `/Volumes` directly (`hdiutil detach -force`) — it
+  does **not** call vaultwatch or run securetrash's vault-close hooks/state restore. Fast and
+  blunt by design; the trade-off (a forced detach can lose unsaved writes) is stated below.
 
 ## Scope & limitations
 
