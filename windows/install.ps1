@@ -3,8 +3,9 @@
 # Тянет panic.ps1 и SHA256SUMS из РЕЛИЗНОГО тега (не из ветки main) и сверяет SHA256
 # ДО установки. Закрывает supply-chain риск «irm|iex из main без проверки»: содержимое
 # релизного тега неизменно (в отличие от подвижной main), хеш ловит повреждение, частичную/
-# кэш-подмену и рассинхрон с публикацией. ЧЕСТНО: сумма и скрипт приходят по одному каналу —
-# от подмены САМОГО релиза это не защищает; для подлинности нужна подпись (SHA256SUMS.sig).
+# кэш-подмену и рассинхрон с публикацией. Поверх целостности проверяется ПОДПИСЬ релиза
+# (ed25519 через `ssh-keygen -Y verify` над SHA256SUMS, зеркало install.sh) — это доказывает
+# ПОДЛИННОСТЬ (кто опубликовал), а не только совпадение хеша по одному каналу.
 #
 # Использование (рекомендуется verify-then-run, см. windows/README.md):
 #   irm https://github.com/Di-kairos/panic/releases/latest/download/install.ps1 -OutFile install.ps1
@@ -13,10 +14,13 @@
 #   pwsh -File install.ps1
 #
 # Переменные окружения:
-#   PANIC_VERSION     — конкретный тег (напр. 0.1.3). По умолчанию latest.
-#   PANIC_BASE_URL    — источник целиком: http(s) URL ИЛИ локальный каталог (тесты/форки).
-#   PANIC_INSTALL_DIR — каталог установки. По умолчанию %LOCALAPPDATA%\Programs\panic.
-#   PANIC_SKIP_PATH   — '1' пропускает правку PATH (для тестов).
+#   PANIC_VERSION       — конкретный тег (напр. 0.1.3). По умолчанию latest.
+#   PANIC_BASE_URL      — источник целиком: http(s) URL ИЛИ локальный каталог (тесты/форки).
+#   PANIC_INSTALL_DIR   — каталог установки. По умолчанию %LOCALAPPDATA%\Programs\panic.
+#   PANIC_SKIP_PATH     — '1' пропускает правку PATH (для тестов).
+#   PT_ALLOW_HASH_ONLY  — '1' разрешает установку ТОЛЬКО по хешу, если подпись нельзя проверить
+#                         (нет ssh-keygen или нет .sig). Громкое предупреждение. По умолчанию
+#                         fail-closed: без проверки подписи установка прерывается.
 #
 # ВНИМАНИЕ: BETA-порт. Логика проверена через Pester (системные примитивы мокаются);
 # поведение на широком парке Windows-консолей/локалей/конфигов BitLocker не обкатано.
@@ -85,6 +89,54 @@ try {
         exit 1
     }
     Write-Host 'Checksum OK.'
+
+    # --- Проверка ПОДПИСИ релиза (аутентичность поверх целостности) ---
+    # Зеркалит install.sh: вшитый ed25519-pubkey → allowed_signers → `ssh-keygen -Y verify`
+    # над SHA256SUMS. FAIL-CLOSED: нет ssh-keygen ИЛИ нет .sig → отказ, кроме PT_ALLOW_HASH_ONLY=1
+    # (громкое предупреждение, ставим только по целостности). Подпись ЕСТЬ, но НЕ сошлась —
+    # всегда жёсткий отказ (явный признак подмены), без обхода.
+    $SigningPubkey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICb2nz4EliRJIU0ExeF41klE/zlyo7XFY119mfzscn2U'
+    $SignPrincipal = 'releases@paranoid-tools'
+
+    $sshKeygen = Get-Command ssh-keygen -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $sshKeygen) {
+        if ($env:PT_ALLOW_HASH_ONLY -eq '1') {
+            Write-Warning 'ssh-keygen недоступен — подпись релиза НЕ проверена (PT_ALLOW_HASH_ONLY=1, только целостность по SHA256).'
+        } else {
+            Write-Error 'ssh-keygen недоступен — подпись релиза не проверить, установка прервана. Установи OpenSSH-клиент или задай PT_ALLOW_HASH_ONLY=1 (только целостность). См. SECURITY.md.'
+            exit 1
+        }
+    } else {
+        $tmpSig  = Join-Path $Tmp 'SHA256SUMS.sig'
+        $haveSig = $false
+        try { Get-ReleaseFile -Name 'SHA256SUMS.sig' -OutFile $tmpSig; $haveSig = Test-Path $tmpSig } catch { $haveSig = $false }
+        if (-not $haveSig) {
+            if ($env:PT_ALLOW_HASH_ONLY -eq '1') {
+                Write-Warning 'Подпись релиза (SHA256SUMS.sig) недоступна — продолжаю (PT_ALLOW_HASH_ONLY=1, только целостность).'
+            } else {
+                Write-Error 'Подпись релиза отсутствует — установка прервана. Для установки только по хешу: PT_ALLOW_HASH_ONLY=1. См. SECURITY.md.'
+                exit 1
+            }
+        } else {
+            $allowedSigners = Join-Path $Tmp 'allowed_signers'
+            Set-Content -LiteralPath $allowedSigners -Value "$SignPrincipal namespaces=`"file`" $SigningPubkey" -NoNewline
+            Write-Host 'Verifying release signature...'
+            # ssh-keygen -Y verify читает подписанные данные (SHA256SUMS) из stdin.
+            # Start-Process -RedirectStandardInput кормит файл байт-в-байт (без перекодировки pipe).
+            $sigOut = Join-Path $Tmp 'sig.out'
+            $sigErr = Join-Path $Tmp 'sig.err'
+            $proc = Start-Process -FilePath $sshKeygen.Source `
+                -ArgumentList @('-Y','verify','-f',$allowedSigners,'-I',$SignPrincipal,'-n','file','-s',$tmpSig) `
+                -RedirectStandardInput $tmpSums -RedirectStandardOutput $sigOut -RedirectStandardError $sigErr `
+                -NoNewWindow -Wait -PassThru
+            if ($proc.ExitCode -eq 0) {
+                Write-Host 'Signature OK (authenticity verified).'
+            } else {
+                Write-Error 'Подпись релиза НЕ прошла проверку — установка прервана (возможна подмена).'
+                exit 1
+            }
+        }
+    }
 
     # Хеш верный → устанавливаем.
     if (-not (Test-Path $InstallDir)) {

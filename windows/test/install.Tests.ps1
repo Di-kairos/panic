@@ -1,7 +1,11 @@
-# Pester 5 — install.ps1 (Windows-порт panic). Проверяем integrity-gate без сети:
+# Pester 5 — install.ps1 (Windows-порт panic). Проверяем integrity- и signature-gate без сети:
 # PANIC_BASE_URL указывает на локальный каталог-«релиз», установка идёт во временный
-# каталог, правка PATH отключена. Покрытие: happy-path, провал на расхождении хеша,
-# провал при отсутствии записи в SHA256SUMS (fail-closed).
+# каталог, правка PATH отключена. Покрытие integrity: happy-path, провал на расхождении хеша,
+# провал при отсутствии записи в SHA256SUMS (fail-closed). Покрытие signature: валидная/битая
+# подпись, отсутствие .sig, отсутствие ssh-keygen — через мок-шим ssh-keygen в PATH.
+#
+# Integrity-тесты гоняются с PT_ALLOW_HASH_ONLY='1' (фикстура без .sig): цель — только хеш-гейт;
+# сам signature-гейт покрыт отдельным Describe.
 
 BeforeAll {
     $script:InstallScript = Join-Path $PSScriptRoot '..\install.ps1'
@@ -29,7 +33,7 @@ Describe 'install.ps1 integrity gate' {
     It 'installs the script when the checksum matches' {
         # Установщик гоняем в дочернем pwsh: env-настройки выставляем внутри -Command,
         # чтобы не протекали в тест-сессию.
-        & pwsh -NoProfile -Command "`$env:PANIC_BASE_URL='$($script:Release)'; `$env:PANIC_INSTALL_DIR='$($script:Target)'; `$env:PANIC_SKIP_PATH='1'; & '$($script:InstallScript)'" *> $null
+        & pwsh -NoProfile -Command "`$env:PANIC_BASE_URL='$($script:Release)'; `$env:PANIC_INSTALL_DIR='$($script:Target)'; `$env:PANIC_SKIP_PATH='1'; `$env:PT_ALLOW_HASH_ONLY='1'; & '$($script:InstallScript)'" *> $null
         (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeTrue
         (Test-Path (Join-Path $script:Target 'panic.cmd')) | Should -BeTrue
     }
@@ -37,15 +41,114 @@ Describe 'install.ps1 integrity gate' {
     It 'fails closed when the checksum does not match' {
         # Портим SHA256SUMS — хеш не сойдётся.
         Set-Content -LiteralPath (Join-Path $script:Release 'SHA256SUMS') -Value ("0"*64 + "  panic.ps1")
-        & pwsh -NoProfile -Command "`$env:PANIC_BASE_URL='$($script:Release)'; `$env:PANIC_INSTALL_DIR='$($script:Target)'; `$env:PANIC_SKIP_PATH='1'; & '$($script:InstallScript)'" *> $null
+        & pwsh -NoProfile -Command "`$env:PANIC_BASE_URL='$($script:Release)'; `$env:PANIC_INSTALL_DIR='$($script:Target)'; `$env:PANIC_SKIP_PATH='1'; `$env:PT_ALLOW_HASH_ONLY='1'; & '$($script:InstallScript)'" *> $null
         $LASTEXITCODE | Should -Not -Be 0
         (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeFalse
     }
 
     It 'fails closed when SHA256SUMS lacks the panic.ps1 entry' {
         Set-Content -LiteralPath (Join-Path $script:Release 'SHA256SUMS') -Value ("deadbeef  somethingelse.txt")
-        & pwsh -NoProfile -Command "`$env:PANIC_BASE_URL='$($script:Release)'; `$env:PANIC_INSTALL_DIR='$($script:Target)'; `$env:PANIC_SKIP_PATH='1'; & '$($script:InstallScript)'" *> $null
+        & pwsh -NoProfile -Command "`$env:PANIC_BASE_URL='$($script:Release)'; `$env:PANIC_INSTALL_DIR='$($script:Target)'; `$env:PANIC_SKIP_PATH='1'; `$env:PT_ALLOW_HASH_ONLY='1'; & '$($script:InstallScript)'" *> $null
         $LASTEXITCODE | Should -Not -Be 0
         (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeFalse
+    }
+}
+
+Describe 'install.ps1 signature gate' {
+    # Хеш всегда валиден (это покрыто выше); варьируем ТОЛЬКО подпись. `ssh-keygen` подменяем
+    # мок-шимом в PATH: результат verify задаём его кодом выхода (0=валидна, 1=битая). Реальный
+    # ключ/подпись не нужны — проверяем оркестровку fail-closed, а не саму криптографию ssh.
+    BeforeAll {
+        $script:InstallScript = Join-Path $PSScriptRoot '..\install.ps1'
+
+        # Кладёт мок-ssh-keygen с заданным кодом выхода в $ShimDir; Windows-CI — .cmd, иначе — bash-шим.
+        function New-SshKeygenShim([int]$ExitCode) {
+            if ($IsWindows) {
+                $shim = Join-Path $script:ShimDir 'ssh-keygen.cmd'
+                Set-Content -LiteralPath $shim -Value "@echo off`r`nexit /b $ExitCode`r`n" -Encoding ASCII
+            } else {
+                $shim = Join-Path $script:ShimDir 'ssh-keygen'
+                Set-Content -LiteralPath $shim -Value "#!/usr/bin/env bash`nexit $ExitCode`n" -NoNewline
+                & chmod +x $shim
+            }
+        }
+
+        # Создаёт .sig-заглушку в релизе (содержимое неважно — verify мокается шимом).
+        function New-SigFile {
+            Set-Content -LiteralPath (Join-Path $script:Release 'SHA256SUMS.sig') -Value 'dummy-signature' -NoNewline
+        }
+
+        # Запуск установщика с prepended $ShimDir в PATH (мок-ssh-keygen находится первым).
+        function Invoke-Installer([string]$ExtraEnv = '') {
+            $withShim = "`$env:PATH='$($script:ShimDir)' + [IO.Path]::PathSeparator + `$env:PATH; "
+            & pwsh -NoProfile -Command "$withShim`$env:PANIC_BASE_URL='$($script:Release)'; `$env:PANIC_INSTALL_DIR='$($script:Target)'; `$env:PANIC_SKIP_PATH='1'; $ExtraEnv & '$($script:InstallScript)'" *> $null
+        }
+    }
+
+    BeforeEach {
+        $script:Work    = Join-Path ([System.IO.Path]::GetTempPath()) ("pn_sig_" + [Guid]::NewGuid().ToString('N'))
+        $script:Release = Join-Path $script:Work 'release'
+        $script:Target  = Join-Path $script:Work 'target'
+        $script:ShimDir = Join-Path $script:Work 'bin'
+        $script:EmptyDir = Join-Path $script:Work 'empty'
+        New-Item -ItemType Directory -Path $script:Release  -Force | Out-Null
+        New-Item -ItemType Directory -Path $script:ShimDir  -Force | Out-Null
+        New-Item -ItemType Directory -Path $script:EmptyDir -Force | Out-Null
+
+        # Корректная нагрузка + SHA256SUMS (хеш сходится).
+        $payload = "Write-Output 'payload-ok'`n"
+        $sf = Join-Path $script:Release 'panic.ps1'
+        Set-Content -LiteralPath $sf -Value $payload -NoNewline
+        $hash = (Get-FileHash -Path $sf -Algorithm SHA256).Hash.ToLower()
+        Set-Content -LiteralPath (Join-Path $script:Release 'SHA256SUMS') -Value "$hash  panic.ps1"
+    }
+
+    AfterEach {
+        Remove-Item -LiteralPath $script:Work -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'installs when the signature verifies' {
+        New-SshKeygenShim 0
+        New-SigFile
+        Invoke-Installer
+        $LASTEXITCODE | Should -Be 0
+        (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeTrue
+    }
+
+    It 'fails closed when the signature is invalid' {
+        New-SshKeygenShim 1
+        New-SigFile
+        Invoke-Installer
+        $LASTEXITCODE | Should -Not -Be 0
+        (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeFalse
+    }
+
+    It 'fails closed when the signature file is missing' {
+        New-SshKeygenShim 0   # verifier есть, но .sig нет
+        Invoke-Installer
+        $LASTEXITCODE | Should -Not -Be 0
+        (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeFalse
+    }
+
+    It 'installs a missing signature only with PT_ALLOW_HASH_ONLY=1' {
+        New-SshKeygenShim 0
+        Invoke-Installer "`$env:PT_ALLOW_HASH_ONLY='1'; "
+        $LASTEXITCODE | Should -Be 0
+        (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeTrue
+    }
+
+    It 'fails closed when ssh-keygen is unavailable' {
+        # PATH без ssh-keygen (пустой каталог) → verifier не найден → отказ.
+        New-SigFile
+        & pwsh -NoProfile -Command "`$env:PATH='$($script:EmptyDir)'; `$env:PANIC_BASE_URL='$($script:Release)'; `$env:PANIC_INSTALL_DIR='$($script:Target)'; `$env:PANIC_SKIP_PATH='1'; & '$($script:InstallScript)'" *> $null
+        $LASTEXITCODE | Should -Not -Be 0
+        (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeFalse
+    }
+
+    It 'installs without a verifier only with PT_ALLOW_HASH_ONLY=1' {
+        New-SigFile
+        & pwsh -NoProfile -Command "`$env:PATH='$($script:EmptyDir)'; `$env:PANIC_BASE_URL='$($script:Release)'; `$env:PANIC_INSTALL_DIR='$($script:Target)'; `$env:PANIC_SKIP_PATH='1'; `$env:PT_ALLOW_HASH_ONLY='1'; & '$($script:InstallScript)'" *> $null
+        $LASTEXITCODE | Should -Be 0
+        (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeTrue
     }
 }
