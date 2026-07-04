@@ -1,8 +1,8 @@
 class Panic < Formula
   desc "One-step hide-and-lock kill-switch for macOS"
   homepage "https://github.com/Di-kairos/panic"
-  url "https://github.com/Di-kairos/panic/archive/refs/tags/v0.1.6.tar.gz"
-  sha256 "ffcf78815e180d11a3e968a53e2a1a1faa842b2664d441d9b3ee0a41df553c00"
+  url "https://github.com/Di-kairos/panic/archive/refs/tags/v0.1.7.tar.gz"
+  sha256 "87b616eb4f8d6e3fd32105f9350874ad483828acaebaa9d0cb74071ac4203e22"
   license "MIT"
 
   def install
