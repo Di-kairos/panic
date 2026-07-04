@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+## [0.1.7] — 2026-07-04
+
+### Added
+- **Windows-инсталлятор проверяет Ed25519-подпись релиза** (fail-closed; отказ
+  разрешён только при отсутствии верификатора/подписи через `PT_ALLOW_HASH_ONLY=1`).
+
+### Docs
+- Исправлены overclaim'ы: panic **форс-отмонтирует тома напрямую** — он не вызывает
+  vaultwatch и не запускает vault-close хуки securetrash; задокументирован fallback
+  CGSession→Ctrl+Cmd+Q на macOS ≥12; помечено, что `curl|bash` one-liner пропускает
+  верификацию; EN/RU parity + фиксы version-drift.
+
 ## [0.1.6] — 2026-06-29
 
 ### Fixed
@@ -105,7 +117,8 @@
   `PANIC_SFL_DIR` overrides.
 - Real-device smoke на macOS: `now` распарсил живой `hdiutil info` и размонтировал тест-образ.
 
-[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/Di-kairos/panic/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/Di-kairos/panic/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/Di-kairos/panic/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/Di-kairos/panic/compare/v0.1.3...v0.1.4

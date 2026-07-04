@@ -11,7 +11,7 @@
 # в следующих паках; см. README «Scope & limitations».
 set -euo pipefail
 
-VERSION="0.1.6"
+VERSION="0.1.7"
 
 # Локер экрана. Метод 1 — CGSession -suspend (login-window switch, не зависит от настройки
 # «требовать пароль»); бандл Menu Extras удалён в свежих macOS (≥12), поэтому это лишь legacy-путь.
@@ -155,8 +155,9 @@ Usage: panic <command> [args]
 
 Commands:
   status              Read-only preflight: show what `panic now` would affect.
-  now [--hard]        Hide & lock now: close vaults, detach volumes, clear
-                      clipboard, lock screen. --hard also kills cloud daemons.
+  now [--hard]        Hide & lock now: force-detach mounted volumes (incl. open
+                      vaults), clear clipboard, lock screen. --hard also kills
+                      cloud daemons.
   hotkey <sub>        Global panic hotkey via skhd: install [combo] | uninstall | status.
                       Default combo: cmd + alt - p. Needs skhd + Accessibility.
   version             Show the version
@@ -171,9 +172,9 @@ Usage: panic <command> [args]
 
 Commands:
   status              Только чтение: что затронет `panic now` (безопасно, предпросмотр).
-  now [--hard]        Спрятать и запереть сейчас: закрыть vault'ы, размонтировать
-                      тома, очистить буфер, заблокировать экран. --hard также
-                      прибивает cloud-демоны.
+  now [--hard]        Спрятать и запереть сейчас: форс-отмонтировать тома
+                      (включая открытые vault'ы), очистить буфер, заблокировать
+                      экран. --hard также прибивает cloud-демоны.
   hotkey <sub>        Глобальный хоткей паники через skhd: install [combo] | uninstall | status.
                       Комбинация по умолчанию: cmd + alt - p. Нужны skhd + Accessibility.
   version             Показать версию
