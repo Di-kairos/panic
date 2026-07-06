@@ -63,7 +63,7 @@ panic --help            # показать справку (также -h / help)
 
 Что делает `panic now`:
 
-1. размонтирует все смонтированные disk image'ы под `/Volumes` (`hdiutil detach -force`);
+1. размонтирует все смонтированные disk-образы под `/Volumes` (`hdiutil detach -force`);
 2. очищает буфер обмена (`pbcopy </dev/null`);
 3. блокирует экран (`CGSession -suspend`, на современных macOS — fallback Ctrl+Cmd+Q
    через `osascript`; при неудаче обоих — честно предупреждает, а не врёт об успехе).
@@ -101,7 +101,7 @@ panic hotkey uninstall               # снять
   НЕ зовёт vaultwatch и не запускает vault-close хуки securetrash. Быстро и грубо намеренно;
   риск (форс-detach может потерять несохранённые записи) описан ниже.
 
-## Scope & limitations
+## Область действия и ограничения
 
 Базовый принцип экосистемы: честно про пределы. panic **прячет и запирает**, но:
 
@@ -110,7 +110,7 @@ panic hotkey uninstall               # снять
 - `detach -force` при открытых файлах может **повредить данные** — осознанный
   trade-off режима паники (спрятать важнее), пользователь должен это знать. Нет confirm:
   скорость важнее; защита от случайного запуска — явный verb `now`.
-- размонтирует **disk image'ы под `/Volumes`** (vault'ы/dmg); system-образы вне `/Volumes`
+- размонтирует **disk-образы под `/Volumes`** (vault'ы/dmg); system-образы вне `/Volumes`
   не трогает. Физические внешние диски — в следующих паках.
 - `--hard` чистит **глобальные** Recent items (shared file lists); per-app «недавние»
   внутри приложений этим НЕ стираются — честно про предел.
@@ -125,7 +125,7 @@ panic hotkey uninstall               # снять
 ## Windows (beta)
 
 PowerShell-порт уже существует — в [`windows/README.md`](windows/README.md). Он повторяет
-логику macOS — lock workstation, dismount BitLocker/VeraCrypt-томов и очистка clipboard.
+логику macOS — блокировку рабочей станции, размонтирование томов BitLocker/VeraCrypt и очистку буфера обмена.
 
 > **Beta:** Windows-порт протестирован по логике (Pester на CI), но ещё не проверен на
 > реальном Windows-железе. См. [`windows/README.md`](windows/README.md).
