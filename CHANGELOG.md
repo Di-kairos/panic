@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+## [0.1.8] — 2026-07-06
+
+### Fixed
+- **`panic status` больше не падает с кодом 1 в headless/ограниченной среде.** Read-only
+  preflight обрывался, если `pbpaste` не мог прочитать pasteboard: под `set -euo pipefail`
+  упавший `pbpaste` в `clip_size="$(pbpaste | wc -c | …)"` ронял всю подстановку и функцию,
+  так что проверки FileVault/cloud не выполнялись. Теперь отказ `pbpaste` изолирован
+  (`|| pb_ok=0`), буфер честно помечается «неизвестно», а статус доходит до конца. bats 9 → 10.
+
 ## [0.1.7] — 2026-07-04
 
 ### Added
@@ -117,7 +126,8 @@
   `PANIC_SFL_DIR` overrides.
 - Real-device smoke на macOS: `now` распарсил живой `hdiutil info` и размонтировал тест-образ.
 
-[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/Di-kairos/panic/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/Di-kairos/panic/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/Di-kairos/panic/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/Di-kairos/panic/compare/v0.1.4...v0.1.5
