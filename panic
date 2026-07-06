@@ -195,6 +195,8 @@ EOF
     ru:status_clip_has)  echo  '  буфер обмена: не пуст — будет очищен' ;;
     en:status_clip_empty) echo '  clipboard: empty' ;;
     ru:status_clip_empty) echo '  буфер обмена: пуст' ;;
+    en:status_clip_unknown) echo '  clipboard: unknown (could not read the pasteboard)' ;;
+    ru:status_clip_unknown) echo '  буфер обмена: неизвестно (не удалось прочитать pasteboard)' ;;
     en:status_fv_on)     echo  '  FileVault: ON — crypto-shred effective on vault close' ;;
     ru:status_fv_on)     echo  '  FileVault: ВКЛ — crypto-shred эффективен при закрытии vault' ;;
     en:status_fv_off)    echo  '  FileVault: OFF — disk not encrypted (vault at risk if drive seized)' ;;
@@ -329,9 +331,15 @@ cmd_status() {
     info "$(t status_no_images)"
   fi
 
-  # Буфер обмена.
-  local clip_size; clip_size="$(pbpaste 2>/dev/null | wc -c | tr -d ' ')"
-  if [[ "${clip_size:-0}" -gt 0 ]]; then
+  # Буфер обмена — best-effort. Под `set -euo pipefail` упавший `pbpaste` (headless / нет
+  # pasteboard-сессии) вернул бы non-zero и оборвал бы read-only статус с кодом 1. Изолируем
+  # именно отказ pbpaste через `|| pb_ok=0` (а НЕ всю pipeline — иначе сломанный wc/tr тоже
+  # молча дал бы «неизвестно»); непустоту проверяем прямо `[[ -n ]]`, без подсчёта байт.
+  local clip="" pb_ok=1
+  clip="$(pbpaste 2>/dev/null)" || pb_ok=0
+  if [[ "$pb_ok" == "0" ]]; then
+    info "$(t status_clip_unknown)"
+  elif [[ -n "$clip" ]]; then
     info "$(t status_clip_has)"
   else
     info "$(t status_clip_empty)"
