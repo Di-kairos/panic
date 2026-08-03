@@ -5,6 +5,20 @@
 
 ## [Unreleased]
 
+## [0.1.9] — 2026-08-03
+
+### Fixed
+- **`install.sh` fail-closed без `ssh-keygen`.** Отсутствие верификатора больше не
+  понижает установку до проверки только по хешу — это отказ (обход
+  `ALLOW_UNSIGNED_LEGACY=1`). `type -P` не даёт экспортированной функции притвориться
+  верификатором.
+
+### Changed
+- **Честный теглайн: «всё с экрана», а не «всё».** panic прячет и запирает — он не
+  уничтожает данные, и формулировка теперь это отражает буквально.
+- README EN+RU: сниппеты установки проверяют подпись, а не только сумму; остаточный
+  риск назван. RU-версия получила потерянное предупреждение про `curl | bash`.
+
 ## [0.1.8] — 2026-07-06
 
 ### Fixed
@@ -127,6 +141,7 @@
 - Real-device smoke на macOS: `now` распарсил живой `hdiutil info` и размонтировал тест-образ.
 
 [Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.8...HEAD
+[0.1.9]: https://github.com/Di-kairos/panic/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/Di-kairos/panic/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/Di-kairos/panic/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/Di-kairos/panic/compare/v0.1.5...v0.1.6
