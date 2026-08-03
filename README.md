@@ -2,7 +2,7 @@
 
 # panic
 
-One-step kill-switch — hide and lock everything with a single command.
+One-step kill-switch — everything off the screen, vaults locked, one command.
 
 [![CI](https://github.com/Di-kairos/panic/actions/workflows/ci.yml/badge.svg)](https://github.com/Di-kairos/panic/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)

@@ -2,7 +2,7 @@
 
 # panic
 
-Kill-switch в один шаг — спрятать и запереть всё одной командой.
+Kill-switch в один шаг — всё с экрана, vault'ы заперты, одной командой.
 
 [![CI](https://github.com/Di-kairos/panic/actions/workflows/ci.yml/badge.svg)](https://github.com/Di-kairos/panic/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
