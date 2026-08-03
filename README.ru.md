@@ -24,12 +24,15 @@ Checksum-verified установка с релизного тега — verify-t
 base=https://github.com/Di-kairos/panic/releases/latest/download
 curl -fsSLO "$base/install.sh"
 curl -fsSLO "$base/SHA256SUMS"
-shasum -a 256 -c SHA256SUMS --ignore-missing   # проверить сам install.sh
-less install.sh                                  # прочитать глазами
+curl -fsSLO "$base/SHA256SUMS.sig"
+printf '%s\n' 'releases@paranoid-tools namespaces="file" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICb2nz4EliRJIU0ExeF41klE/zlyo7XFY119mfzscn2U' > allowed_signers
+ssh-keygen -Y verify -f allowed_signers -I releases@paranoid-tools -n file -s SHA256SUMS.sig < SHA256SUMS &&   # подлинность: Ed25519, пришитый ключ
+shasum -a 256 -c SHA256SUMS --ignore-missing &&   # целостность: сам install.sh
+less install.sh &&                               # прочитать глазами — и только потом:
 bash install.sh                                  # тянет panic + сумму, проверяет, ставит
 ```
 
-Быстрая форма (одна строка):
+Быстрая форма (одна строка, **пропускает проверку** — выбирай осознанно):
 
 ```bash
 curl -fsSL https://github.com/Di-kairos/panic/releases/latest/download/install.sh | bash
@@ -41,9 +44,11 @@ curl -fsSL https://github.com/Di-kairos/panic/releases/latest/download/install.s
 
 > **Целостность ≠ подлинность (честные границы).** Контрольная сумма доказывает, что
 > бинарь совпадает с `SHA256SUMS` из того же релиза — это ловит повреждение,
-> частичную/кэш-подмену и не даёт запустить код с подвижной ветки `main`. Сама по себе она
-> НЕ защищает от атакующего, способного переписать *и* бинарь, *и* его сумму в источнике,
-> и НЕ доказывает, *кто* их опубликовал. Для этого нужна подпись. Зафиксируй конкретную
+> частичную/кэш-подмену и не даёт запустить код с подвижной ветки `main`. Подлинность даёт подпись Ed25519
+> над `SHA256SUMS`: её проверяют и сниппет выше, и `install.sh` — по ключу, пришитому в
+> этом репо; без проверки установщик отказывает (см. `SECURITY.md`). Остаточный риск —
+> один проектный ключ на все пять тулов, см.
+> [модель угроз](https://github.com/Di-kairos/paranoid-tools/blob/main/THREAT-MODEL.ru.md). Зафиксируй конкретную
 > версию через `PANIC_VERSION=0.1.8` вместо `latest` для воспроизводимости.
 
 ## Использование

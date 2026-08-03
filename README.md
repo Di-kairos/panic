@@ -25,8 +25,11 @@ Checksum-verified install from the release tag — verify-then-run (don't trust,
 base=https://github.com/Di-kairos/panic/releases/latest/download
 curl -fsSLO "$base/install.sh"
 curl -fsSLO "$base/SHA256SUMS"
-shasum -a 256 -c SHA256SUMS --ignore-missing   # verifies install.sh itself
-less install.sh                                  # read it
+curl -fsSLO "$base/SHA256SUMS.sig"
+printf '%s\n' 'releases@paranoid-tools namespaces="file" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICb2nz4EliRJIU0ExeF41klE/zlyo7XFY119mfzscn2U' > allowed_signers
+ssh-keygen -Y verify -f allowed_signers -I releases@paranoid-tools -n file -s SHA256SUMS.sig < SHA256SUMS &&   # authenticity: Ed25519, pinned key
+shasum -a 256 -c SHA256SUMS --ignore-missing &&   # integrity: verifies install.sh
+less install.sh &&                               # read it — then run:
 bash install.sh                                  # pulls panic + checksum, verifies, installs
 ```
 
@@ -43,9 +46,11 @@ moving `main` branch) and verifies the hash **before** installing. Environment v
 
 > **Integrity vs authenticity (honest scope).** The checksum proves the binary matches the
 > `SHA256SUMS` published in the *same release* — it catches corruption, partial/cached
-> tampering, and stops you running code off the moving `main` branch. It does **not** by
-> itself defeat an attacker who can rewrite *both* the binary and its checksum at the
-> source, nor does it prove *who* published them. For that you need a signature. Pin a
+> tampering, and stops you running code off the moving `main` branch. Authenticity comes from the
+> Ed25519 signature over `SHA256SUMS`: the snippet above and `install.sh` both verify it
+> against a key pinned in this repo, and the installer fails closed when it can't (see
+> `SECURITY.md`). Residual risk: one project key signs all five tools — see the ecosystem
+> [threat model](https://github.com/Di-kairos/paranoid-tools/blob/main/THREAT-MODEL.md). Pin a
 > specific version with `PANIC_VERSION=0.1.8` instead of `latest` for reproducibility.
 
 ## Usage
