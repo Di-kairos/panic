@@ -101,7 +101,7 @@ panic hotkey uninstall               # снять
 - Single-file Bash, ноль зависимостей. Нативные примитивы macOS (`hdiutil`,
   `pbcopy`, `CGSession` c fallback `osascript` Ctrl+Cmd+Q для lock).
 - Общее ядро (`lib/common.sh`) **вендорится** из securetrash inline, пиннуто к git-ref;
-  `tools/vendor-common.sh --check` ловит дрейф в CI. См. `paranoid-tools/README.md`.
+  `tools/vendor-common.sh --check` ловит дрейф в CI. См. [`paranoid-tools/README.md`](https://github.com/Di-kairos/paranoid-tools#readme).
 - Форс-отмонтирует смонтированные disk-образы под `/Volumes` напрямую (`hdiutil detach -force`) —
   НЕ зовёт vaultwatch и не запускает vault-close хуки securetrash. Быстро и грубо намеренно;
   риск (форс-detach может потерять несохранённые записи) описан ниже.
