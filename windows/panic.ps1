@@ -3,7 +3,7 @@
 #
 # Сценарий: граница / принуждение / «кто-то идёт». Одной командой `panic now` ПРЯЧЕТ и
 # ЗАПИРАЕТ: запирает разблокированные BitLocker-тома, размонтирует тома VeraCrypt, чистит
-# буфер обмена и блокирует экран (`rundll32 user32.dll,LockWorkStation`). `--hard` также
+# буфер обмена и блокирует экран (P/Invoke `user32!LockWorkStation`). `--hard` также
 # прибивает cloud-демоны (OneDrive/Dropbox/Google Drive) и чистит Recent items.
 #
 # ЧЕСТНО (как и в bash-версии): panic ПРЯЧЕТ и ЗАПИРАЕТ, но НЕ уничтожает и НЕ чистит pagefile
@@ -57,7 +57,7 @@ function T {
     $loc = $script:PN_LOCALE
     switch ("${loc}:${Key}") {
         'en:unknown_cmd'      { return "Unknown command: $A" }
-        'ru:unknown_cmd'      { return "Unknown command: $A" }
+        'ru:unknown_cmd'      { return "Неизвестная команда: $A" }
         'en:status_header'    { return 'panic status — read-only preflight (no changes made)' }
         'ru:status_header'    { return 'panic status — только чтение, предпросмотр (изменений нет)' }
         'en:status_vols'      { return "  encrypted volumes unlocked: $A — would be locked/dismounted by ``panic now``" }

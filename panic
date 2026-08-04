@@ -184,7 +184,7 @@ securetrash). detach -force может повредить открытые фа�
 EOF
       ;;
     en:unknown_cmd) printf 'Unknown command: %s' "$1" ;;
-    ru:unknown_cmd) printf 'Unknown command: %s' "$1" ;;
+    ru:unknown_cmd) printf 'Неизвестная команда: %s' "$1" ;;
     en:status_header)    echo 'panic status — read-only preflight (no changes made)' ;;
     ru:status_header)    echo 'panic status — только чтение, предпросмотр (изменений нет)' ;;
     en:status_images)    printf '  disk images mounted: %s — would be detached by `panic now`' "$1" ;;
@@ -365,7 +365,7 @@ cmd_status() {
 # строки литерально — без возни с экранированием спецсимволов в маркерах.
 _hotkey_strip() {
   [[ -f "$SKHD_CONFIG" ]] || return 0
-  local tmp; tmp="$(mktemp)"
+  local tmp; tmp="$(mktemp)" || return 1
   # Удаляем ТОЛЬКО полные managed-блоки (begin..end). Незакрытый блок (повреждённый
   # конфиг) НЕ режем до конца файла — буферизуем и возвращаем, чтобы не снести чужие строки.
   awk -v b="$PANIC_HK_BEGIN" -v e="$PANIC_HK_END" '
@@ -373,7 +373,13 @@ _hotkey_strip() {
     inblock { buf=buf $0 ORS; if ($0==e) { inblock=0; buf="" } next }
     { print }
     END { if (inblock) printf "%s", buf }
-  ' "$SKHD_CONFIG" > "$tmp" && mv "$tmp" "$SKHD_CONFIG"
+  ' "$SKHD_CONFIG" > "$tmp" || { rm -f "$tmp"; return 1; }
+  # Содержимое переливаем в существующий файл, а не подменяем его через mv: mv принёс бы
+  # права mktemp (600) и владельца текущего пользователя на чужой skhdrc. Копию чужого
+  # конфига убираем сразу — оставлять её в TMPDIR незачем (trap RETURN тут не годится:
+  # в bash он глобальный и сработал бы на возврате любой другой функции).
+  cat "$tmp" > "$SKHD_CONFIG"
+  rm -f "$tmp"
 }
 
 # (Пере)запустить skhd-сервис best-effort: для уже установленного сервиса хватает restart;

@@ -86,3 +86,16 @@ run_hk() { run env PATH="$STUBS:$PATH" SKHD_CONFIG="$SKHD_CONFIG" bash "$SCRIPT"
   [ "$status" -ne 0 ]
   [[ "$output" == *"skhd not found"* ]]
 }
+
+@test "hotkey install/uninstall keeps the skhd config's own permissions (P3 trap hygiene)" {
+  # Раньше managed-блок вырезался через `mv` временного файла — skhdrc получал права
+  # mktemp (600) и владельца текущего пользователя вместо своих.
+  printf 'alt - a : echo hi\n' > "$SKHD_CONFIG"
+  chmod 0644 "$SKHD_CONFIG"
+  before="$(stat -f '%Lp' "$SKHD_CONFIG" 2>/dev/null || stat -c '%a' "$SKHD_CONFIG")"
+  run_hk install
+  run_hk uninstall
+  [ "$status" -eq 0 ]
+  after="$(stat -f '%Lp' "$SKHD_CONFIG" 2>/dev/null || stat -c '%a' "$SKHD_CONFIG")"
+  [ "$before" = "$after" ]
+}

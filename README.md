@@ -60,7 +60,8 @@ panic status            # read-only preflight: show what `panic now` would affec
 panic now               # hide & lock now
 panic now --hard        # + kill cloud daemons, clear Recent items
 panic hotkey install    # bind a global hotkey (cmd + alt - p) to `panic now`
-panic hotkey status     # show / uninstall the hotkey
+panic hotkey status     # is the hotkey installed?
+panic hotkey uninstall  # remove it (only the block panic manages)
 panic version           # print the version (also -v / --version)
 panic --help            # print usage (also -h / help)
 ```

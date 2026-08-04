@@ -56,7 +56,7 @@ messages to Russian.
 |--------------|---------------------|
 | `hdiutil detach -force` (vault images) | `Lock-BitLocker -ForceDismount` + `VeraCrypt /d /f` |
 | `pbcopy </dev/null` | `Set-Clipboard -Value ''` |
-| `CGSession -suspend` | `rundll32 user32.dll,LockWorkStation` |
+| `CGSession -suspend` | P/Invoke `user32!LockWorkStation` (not `rundll32` — its exit code says nothing about whether the screen locked) |
 | `pkill` cloud daemons | `Stop-Process` (OneDrive, Dropbox, GoogleDriveFS) |
 | sharedfilelist Recent items | `%APPDATA%\Microsoft\Windows\Recent` |
 | `fdesetup status` (FileVault) | `Get-BitLockerVolume` (system drive) |
