@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+## [0.1.11] — 2026-08-05
+
+### Fixed
+- **`status` больше не может назвать включённый FileVault выключенным.** Детект был
+  прямым пайпом `fdesetup status | grep -q`: `grep -q` закрывает канал на первом
+  совпадении, `fdesetup` ловит SIGPIPE, а `set -o pipefail` делает весь конвейер
+  ненулевым — то есть именно совпадение («FileVault is On») могло прочитаться как
+  «выключен». Вывод теперь захватывается в переменную, пайпа нет, гонки нет.
+  Отсутствие `fdesetup` по-прежнему показывается как «выключен» (fail-closed).
+
+### Changed
+- **Перевендорен `securetrash/lib/common.sh`** (пин `221f2c7`): единый на экосистему
+  детект примонтированного тома (`_volume_mounted`) и tri-state FileVault (`_fv_state`:
+  on/off/unknown, `filevault_on` — его двоичная обёртка).
+
 ## [0.1.10] — 2026-08-05
 
 ### Fixed
@@ -158,7 +173,8 @@
   `PANIC_SFL_DIR` overrides.
 - Real-device smoke на macOS: `now` распарсил живой `hdiutil info` и размонтировал тест-образ.
 
-[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.10...HEAD
+[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/Di-kairos/panic/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/Di-kairos/panic/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/Di-kairos/panic/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/Di-kairos/panic/compare/v0.1.7...v0.1.8
