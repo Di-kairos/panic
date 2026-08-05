@@ -5,6 +5,24 @@
 
 ## [Unreleased]
 
+## [0.1.10] — 2026-08-05
+
+### Fixed
+- **`hotkey` больше не переписывает права на `skhdrc`.** Снятие управляемого блока
+  подменяло весь конфиг через `mv` — и чужой `skhdrc` возвращался с владельцем текущего
+  пользователя и правами `0600` от `mktemp`, а временная копия оставалась на диске, если
+  падал `awk`. Содержимое теперь вливается обратно в существующий файл, а копия удаляется
+  на обоих путях.
+- «Unknown command» переведено в русской таблице.
+
+### Changed
+- Документация: в таблице команд `hotkey status` был описан так, будто он ещё и удаляет
+  хоткей; в таблице соответствий для Windows значился `rundll32` для блокировки экрана,
+  хотя порт с самого начала зовёт `LockWorkStation` через P/Invoke — именно потому, что
+  код возврата `rundll32` ничего не говорит о том, заблокировался ли экран.
+- Ссылка на соседний репозиторий сделана настоящей ссылкой: «See paranoid-tools/README.md»
+  — мёртвый путь, когда этот репозиторий читают сам по себе.
+
 ## [0.1.9] — 2026-08-03
 
 ### Fixed
@@ -140,7 +158,8 @@
   `PANIC_SFL_DIR` overrides.
 - Real-device smoke на macOS: `now` распарсил живой `hdiutil info` и размонтировал тест-образ.
 
-[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.10...HEAD
+[0.1.10]: https://github.com/Di-kairos/panic/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/Di-kairos/panic/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/Di-kairos/panic/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/Di-kairos/panic/compare/v0.1.6...v0.1.7
