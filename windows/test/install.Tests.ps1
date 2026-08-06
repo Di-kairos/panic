@@ -62,6 +62,47 @@ Describe 'install.ps1 signature gate' {
         $script:InstallScript = Join-Path $PSScriptRoot '..\install.ps1'
 
         # Кладёт мок-ssh-keygen с заданным кодом выхода в $ShimDir; Windows-CI — .cmd, иначе — bash-шим.
+        # Шим, СОХРАНЯЮЩИЙ полученный stdin в файл (путь — в PT_TEST_STDIN_CAPTURE): проверяем
+        # не «позвали верификатор», а ЧТО в него уехало. Сам шим — pwsh-скрипт (одинаковый на
+        # всех платформах), обёрнутый в .cmd/sh, потому что PATH ищет исполняемый файл, не .ps1.
+        function New-SshKeygenCaptureShim {
+            $capture = Join-Path $script:ShimDir 'capture.ps1'
+            Set-Content -LiteralPath $capture -Encoding ascii -Value @'
+$fs = [IO.File]::Create($env:PT_TEST_STDIN_CAPTURE)
+try { [Console]::OpenStandardInput().CopyTo($fs) } finally { $fs.Close() }
+exit 0
+'@
+            if ($IsWindows) {
+                Set-Content -LiteralPath (Join-Path $script:ShimDir 'ssh-keygen.cmd') -Encoding ASCII `
+                    -Value "@echo off`r`npwsh -NoProfile -File `"$capture`"`r`nexit /b %ERRORLEVEL%`r`n"
+            } else {
+                $shim = Join-Path $script:ShimDir 'ssh-keygen'
+                Set-Content -LiteralPath $shim -Value "#!/bin/sh`nexec pwsh -NoProfile -File '$capture'`n" -NoNewline
+                & chmod +x $shim
+            }
+        }
+
+        # Болтливый шим: сыплет в stdout/stderr заведомо больше буфера трубы и выходит с 0.
+        # Если установщик перенаправил потоки и не вычитывает их, верификатор встанет на записи,
+        # а `WaitForExit` будет ждать его вечно — установка молча зависнет.
+        function New-SshKeygenNoisyShim {
+            $noisy = Join-Path $script:ShimDir 'noisy.ps1'
+            Set-Content -LiteralPath $noisy -Encoding ascii -Value @'
+$null = [Console]::OpenStandardInput().CopyTo([IO.Stream]::Null)
+$chunk = 'x' * 4096
+for ($i = 0; $i -lt 64; $i++) { [Console]::Out.WriteLine($chunk); [Console]::Error.WriteLine($chunk) }
+exit 0
+'@
+            if ($IsWindows) {
+                Set-Content -LiteralPath (Join-Path $script:ShimDir 'ssh-keygen.cmd') -Encoding ASCII `
+                    -Value "@echo off`r`npwsh -NoProfile -File `"$noisy`"`r`nexit /b %ERRORLEVEL%`r`n"
+            } else {
+                $shim = Join-Path $script:ShimDir 'ssh-keygen'
+                Set-Content -LiteralPath $shim -Value "#!/bin/sh`nexec pwsh -NoProfile -File '$noisy'`n" -NoNewline
+                & chmod +x $shim
+            }
+        }
+
         function New-SshKeygenShim([int]$ExitCode) {
             if ($IsWindows) {
                 $shim = Join-Path $script:ShimDir 'ssh-keygen.cmd'
@@ -113,6 +154,43 @@ Describe 'install.ps1 signature gate' {
         Invoke-Installer
         $LASTEXITCODE | Should -Be 0
         (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeTrue
+    }
+
+    It 'does not hang when the verifier is noisy (redirected streams must be drained)' {
+        New-SshKeygenNoisyShim
+        New-SigFile
+        $job = Start-Job -ScriptBlock {
+            param($InstallScript, $Release, $Target, $ShimDir, $Sep)
+            $env:PATH = $ShimDir + $Sep + $env:PATH
+            $env:PANIC_BASE_URL = $Release
+            $env:PANIC_INSTALL_DIR = $Target
+            $env:PANIC_SKIP_PATH = '1'
+            & pwsh -NoProfile -File $InstallScript *> $null
+        } -ArgumentList $script:InstallScript, $script:Release, $script:Target, $script:ShimDir, ([IO.Path]::PathSeparator)
+        $finished = Wait-Job -Job $job -Timeout 90
+        Remove-Job -Job $job -Force
+        $finished | Should -Not -BeNullOrEmpty -Because 'установщик обязан завершиться, а не ждать верификатор вечно'
+        (Test-Path (Join-Path $script:Target 'panic.ps1')) | Should -BeTrue
+    }
+
+    It 'hands the verifier the signed bytes unchanged (CRLF survives, nothing appended)' {
+        # Регрессия, которая уже случалась в экосистеме: SHA256SUMS уходил в ssh-keygen через
+        # конвейер PowerShell, а тот перекодирует текст (BOM, CRLF) и дописывает перевод строки.
+        # Подпись валидна, но верификатор видит ДРУГИЕ байты → «incorrect signature» → fail-closed
+        # рубит установку с НАСТОЯЩЕГО релиза. Файл здесь намеренно с CRLF: так его отдаёт
+        # любой генератор, запущенный на Windows.
+        $sums = Join-Path $script:Release 'SHA256SUMS'
+        $hash = (Get-FileHash -Path (Join-Path $script:Release 'panic.ps1') -Algorithm SHA256).Hash.ToLower()
+        [IO.File]::WriteAllBytes($sums, [Text.Encoding]::ASCII.GetBytes("$hash  panic.ps1`r`n"))
+        $expected = [IO.File]::ReadAllBytes($sums)
+
+        New-SshKeygenCaptureShim
+        New-SigFile
+        $capture = Join-Path $script:Work 'stdin.bin'
+        Invoke-Installer "`$env:PT_TEST_STDIN_CAPTURE='$capture'; "
+
+        (Test-Path $capture) | Should -BeTrue
+        [IO.File]::ReadAllBytes($capture) | Should -Be $expected
     }
 
     It 'fails closed when the signature is invalid' {

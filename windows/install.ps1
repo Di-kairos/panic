@@ -121,14 +121,31 @@ try {
             $allowedSigners = Join-Path $Tmp 'allowed_signers'
             Set-Content -LiteralPath $allowedSigners -Value "$SignPrincipal namespaces=`"file`" $SigningPubkey" -NoNewline
             Write-Host 'Verifying release signature...'
-            # ssh-keygen -Y verify читает подписанные данные (SHA256SUMS) из stdin.
-            # Start-Process -RedirectStandardInput кормит файл байт-в-байт (без перекодировки pipe).
-            $sigOut = Join-Path $Tmp 'sig.out'
-            $sigErr = Join-Path $Tmp 'sig.err'
-            $proc = Start-Process -FilePath $sshKeygen.Source `
-                -ArgumentList @('-Y','verify','-f',$allowedSigners,'-I',$SignPrincipal,'-n','file','-s',$tmpSig) `
-                -RedirectStandardInput $tmpSums -RedirectStandardOutput $sigOut -RedirectStandardError $sigErr `
-                -NoNewWindow -Wait -PassThru
+            # SHA256SUMS подаётся на stdin ТОЧНЫМИ байтами (аналог `< SHA256SUMS` в install.sh):
+            # пайп PowerShell перекодировал бы содержимое (BOM, CRLF) и валидная подпись
+            # отвалилась бы как «incorrect signature». Копируем сырой поток файла.
+            # Зеркало канона securetrash/windows/install.ps1 — правишь здесь, правь во всех пяти.
+            $psi = New-Object System.Diagnostics.ProcessStartInfo
+            $psi.FileName = $sshKeygen.Source
+            foreach ($a in @('-Y','verify','-f',$allowedSigners,'-I',$SignPrincipal,'-n','file','-s',$tmpSig)) {
+                $psi.ArgumentList.Add($a)
+            }
+            $psi.RedirectStandardInput  = $true
+            $psi.RedirectStandardOutput = $true
+            $psi.RedirectStandardError  = $true
+            $psi.UseShellExecute        = $false
+            $proc = [System.Diagnostics.Process]::Start($psi)
+            # stdout/stderr вычитываем АСИНХРОННО и ДО WaitForExit: перенаправленный, но не
+            # прочитанный поток упирается в буфер трубы — верификатор встаёт, а установщик
+            # ждёт его вечно. Тихо висящий установщик хуже честного отказа.
+            $outTask = $proc.StandardOutput.ReadToEndAsync()
+            $errTask = $proc.StandardError.ReadToEndAsync()
+            $fs = [System.IO.File]::OpenRead($tmpSums)
+            try { $fs.CopyTo($proc.StandardInput.BaseStream) } finally { $fs.Close() }
+            $proc.StandardInput.Close()
+            $null = $outTask.Result
+            $null = $errTask.Result
+            $proc.WaitForExit()
             if ($proc.ExitCode -eq 0) {
                 Write-Host 'Signature OK (authenticity verified).'
             } else {
