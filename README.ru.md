@@ -49,7 +49,7 @@ curl -fsSL https://github.com/Di-kairos/panic/releases/latest/download/install.s
 > этом репо; без проверки установщик отказывает (см. `SECURITY.md`). Остаточный риск —
 > один проектный ключ на все пять тулов, см.
 > [модель угроз](https://github.com/Di-kairos/paranoid-tools/blob/main/THREAT-MODEL.ru.md). Зафиксируй конкретную
-> версию через `PANIC_VERSION=0.1.13` вместо `latest` для воспроизводимости.
+> версию через `PANIC_VERSION=0.1.14` вместо `latest` для воспроизводимости.
 
 ## Использование
 

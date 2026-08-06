@@ -5,6 +5,15 @@
 
 ## [Unreleased]
 
+## [0.1.14] — 2026-08-06
+
+### Fixed
+- **Установщик Windows работает и под штатным Windows PowerShell 5.1.** Аргументы верификатору
+  подписи собирались через `ProcessStartInfo.ArgumentList`, которого в .NET Framework нет, —
+  а 5.1 это ровно тот шелл, в котором выполняют однострочник из README. Установка падала бы на
+  шаге проверки подписи. Добавлен запасной путь через строку аргументов с корректным
+  квотированием (кавычки экранируются, хвостовые обратные слэши удваиваются).
+
 ## [0.1.13] — 2026-08-06
 
 ### Fixed
@@ -206,7 +215,8 @@
   `PANIC_SFL_DIR` overrides.
 - Real-device smoke на macOS: `now` распарсил живой `hdiutil info` и размонтировал тест-образ.
 
-[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.13...HEAD
+[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.14...HEAD
+[0.1.14]: https://github.com/Di-kairos/panic/compare/v0.1.13...v0.1.14
 [0.1.13]: https://github.com/Di-kairos/panic/compare/v0.1.12...v0.1.13
 [0.1.12]: https://github.com/Di-kairos/panic/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/Di-kairos/panic/compare/v0.1.10...v0.1.11
