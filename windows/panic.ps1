@@ -16,7 +16,7 @@
 # BETA: логика покрыта Pester (системные примитивы мокаются); поведение на реальном железе с
 # экзотическими локалями/конфигурациями BitLocker/VeraCrypt широко не обкатано.
 
-$VERSION = '0.1.12'
+$VERSION = '0.1.13'
 
 # --- настраиваемые примитивы (зеркало bash PANIC_*; переопределяемы для тестов) ---
 # Имя процесса VeraCrypt CLI (в PATH). Cloud-демоны и каталог Recent items — ниже.
@@ -58,6 +58,8 @@ function T {
     switch ("${loc}:${Key}") {
         'en:unknown_cmd'      { return "Unknown command: $A" }
         'ru:unknown_cmd'      { return "Неизвестная команда: $A" }
+        'en:hotkey_no_win'    { return "hotkey is macOS-only: it is bound through skhd, which has no Windows counterpart, and panic will not leave a background process resident just to watch the keyboard. Windows binds hotkeys on the shortcut itself: create a shortcut to panic.cmd (Start menu or Desktop), open Properties, put the cursor in 'Shortcut key' and press Ctrl+Alt+P. Windows then runs it from anywhere. Nothing here is installed or removed on your behalf." }
+        'ru:hotkey_no_win'    { return "hotkey — только для macOS: там он вешается через skhd, аналога которому в Windows нет, а держать фоновый процесс ради слежения за клавиатурой panic не станет. В Windows горячая клавиша живёт на самом ярлыке: сделай ярлык на panic.cmd (меню «Пуск» или рабочий стол), открой «Свойства», поставь курсор в поле «Быстрый вызов» и нажми Ctrl+Alt+P. Дальше Windows запускает его откуда угодно. Ничего за тебя тут не ставится и не удаляется." }
         'en:status_header'    { return 'panic status — read-only preflight (no changes made)' }
         'ru:status_header'    { return 'panic status — только чтение, предпросмотр (изменений нет)' }
         'en:status_vols'      { return "  encrypted volumes unlocked: $A — would be locked/dismounted by ``panic now``" }
@@ -98,6 +100,7 @@ Commands:
   now [--hard]        Спрятать и запереть сейчас: запереть BitLocker-тома, размонтировать
                       тома VeraCrypt, очистить буфер, заблокировать экран. --hard также
                       прибивает cloud-демоны и чистит Recent items.
+  hotkey              Нет в Windows-порте — печатает, как повесить Ctrl+Alt+P средствами ОС.
   version             Показать версию
 
 panic ПРЯЧЕТ и ЗАПИРАЕТ — НЕ уничтожает и НЕ чистит pagefile (для уничтожения —
@@ -112,6 +115,7 @@ Commands:
   now [--hard]        Hide & lock now: lock BitLocker volumes, dismount VeraCrypt
                       volumes, clear clipboard, lock screen. --hard also kills cloud
                       daemons and clears recent items.
+  hotkey              Not in the Windows port - prints how to bind Ctrl+Alt+P with the OS itself.
   version             Show the version
 
 panic HIDES and LOCKS — it does NOT destroy or wipe the pagefile (use securetrash to
@@ -303,6 +307,10 @@ function Invoke-PnMain {
             { $_ -in 'help', '--help', '-h' }       { Write-Output (Get-PnUsage) }
             'status' { Invoke-PnStatus }
             'now'    { Invoke-PnNow -ArgList $rest }
+            # README документирует `panic hotkey` — на Windows его нет. Молчаливое
+            # «Unknown command» читалось бы как поломка установки, а не как честная граница
+            # порта: называем причину и рабочий путь средствами самой ОС.
+            'hotkey' { Write-PnErr (T 'hotkey_no_win'); exit 1 }
             default  { Write-PnErr (T 'unknown_cmd' $cmd); [Console]::Error.WriteLine((Get-PnUsage)); exit 1 }
         }
     } catch [PnExit] {

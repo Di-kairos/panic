@@ -146,6 +146,16 @@ Describe 'CLI surface (child pwsh)' {
         & pwsh -NoProfile -File $script:ScriptPath bogus *> $null
         $LASTEXITCODE | Should -Not -Be 0
     }
+    It 'names the missing hotkey instead of calling it an unknown command' {
+        # README документирует `panic hotkey`, а Windows-порт его не несёт. «Unknown command»
+        # тут читается как сломанная установка; пользователь должен получить причину и рабочий
+        # обходной путь средствами самой ОС.
+        $err = (& pwsh -NoProfile -File $script:ScriptPath hotkey 2>&1 | Out-String)
+        $LASTEXITCODE | Should -Not -Be 0
+        $err | Should -Not -Match 'Unknown command'
+        $err | Should -Match 'macOS-only'
+        $err | Should -Match 'Ctrl\+Alt\+P'
+    }
     It 'exits non-zero with no command (prints usage)' {
         & pwsh -NoProfile -File $script:ScriptPath *> $null
         $LASTEXITCODE | Should -Not -Be 0

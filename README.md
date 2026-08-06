@@ -51,7 +51,7 @@ moving `main` branch) and verifies the hash **before** installing. Environment v
 > against a key pinned in this repo, and the installer fails closed when it can't (see
 > `SECURITY.md`). Residual risk: one project key signs all five tools — see the ecosystem
 > [threat model](https://github.com/Di-kairos/paranoid-tools/blob/main/THREAT-MODEL.md). Pin a
-> specific version with `PANIC_VERSION=0.1.12` instead of `latest` for reproducibility.
+> specific version with `PANIC_VERSION=0.1.13` instead of `latest` for reproducibility.
 
 ## Usage
 
@@ -100,8 +100,12 @@ block of your `skhdrc`, so your own skhd bindings are left untouched. On first t
 grant skhd access under **System Settings → Privacy & Security → Accessibility**, or the
 hotkey won't fire.
 
-> On Windows the global hotkey is not wired yet — run `panic now` directly (a native
-> hotkey is planned).
+> **`panic hotkey` is macOS-only, and that is a decision, not a gap in the queue.** It is bound
+> through skhd; Windows has no counterpart, and panic will not leave a background process
+> resident just to watch the keyboard. Windows already binds hotkeys where they belong — on the
+> shortcut: make a shortcut to `panic.cmd`, open Properties, click into *Shortcut key* and press
+> `Ctrl+Alt+P`. Running `panic hotkey` on Windows prints exactly this instead of pretending the
+> command does not exist.
 
 ## How it works
 
