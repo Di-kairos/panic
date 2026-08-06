@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+## [0.1.12] — 2026-08-06
+
+### Fixed
+- **Установщик Windows больше не может тихо повиснуть на проверке подписи.** `stdout`/`stderr`
+  верификатора перенаправлялись, но не вычитывались до `WaitForExit`: `ssh-keygen`, написавший
+  больше буфера трубы, вставал на записи, а установщик ждал его вечно. Молча висящая установка
+  хуже честного отказа. Потоки теперь дренируются асинхронно; регрессия воспроизведена тестом
+  (без дренажа установщик не возвращается).
+- Подача подписанных данных переведена с `Start-Process -RedirectStandardInput` на тот же
+  `ProcessStartInfo`, что у остальных четырёх. Оба варианта отдают сырые байты, но один
+  security-критичный шаг, написанный в пяти установщиках тремя разными способами, — это ровно
+  тот способ, которым копия seedsplit уехала на форму, ломавшую установку.
+
 ## [0.1.11] — 2026-08-05
 
 ### Fixed
@@ -173,7 +186,8 @@
   `PANIC_SFL_DIR` overrides.
 - Real-device smoke на macOS: `now` распарсил живой `hdiutil info` и размонтировал тест-образ.
 
-[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.11...HEAD
+[Unreleased]: https://github.com/Di-kairos/panic/compare/v0.1.12...HEAD
+[0.1.12]: https://github.com/Di-kairos/panic/compare/v0.1.11...v0.1.12
 [0.1.11]: https://github.com/Di-kairos/panic/compare/v0.1.10...v0.1.11
 [0.1.10]: https://github.com/Di-kairos/panic/compare/v0.1.9...v0.1.10
 [0.1.9]: https://github.com/Di-kairos/panic/compare/v0.1.8...v0.1.9
