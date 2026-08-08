@@ -81,7 +81,9 @@ $fs = [IO.File]::Create($env:PT_TEST_STDIN_CAPTURE)
 try { [Console]::OpenStandardInput().CopyTo($fs) } finally { $fs.Close() }
 exit 0
 '@
-            if ($IsWindows) {
+            # $env:OS, не $IsWindows: последняя определена только в PowerShell 6+, под Windows
+            # PowerShell 5.1 она $null — и тест уходил в Unix-ветку прямо на Windows.
+            if ($env:OS -eq 'Windows_NT') {
                 Set-Content -LiteralPath (Join-Path $script:ShimDir 'ssh-keygen.cmd') -Encoding ASCII `
                     -Value "@echo off`r`npwsh -NoProfile -File `"$capture`"`r`nexit /b %ERRORLEVEL%`r`n"
             } else {
@@ -102,7 +104,7 @@ $chunk = 'x' * 4096
 for ($i = 0; $i -lt 64; $i++) { [Console]::Out.WriteLine($chunk); [Console]::Error.WriteLine($chunk) }
 exit 0
 '@
-            if ($IsWindows) {
+            if ($env:OS -eq 'Windows_NT') {
                 Set-Content -LiteralPath (Join-Path $script:ShimDir 'ssh-keygen.cmd') -Encoding ASCII `
                     -Value "@echo off`r`npwsh -NoProfile -File `"$noisy`"`r`nexit /b %ERRORLEVEL%`r`n"
             } else {
@@ -113,7 +115,7 @@ exit 0
         }
 
         function New-SshKeygenShim([int]$ExitCode) {
-            if ($IsWindows) {
+            if ($env:OS -eq 'Windows_NT') {
                 $shim = Join-Path $script:ShimDir 'ssh-keygen.cmd'
                 Set-Content -LiteralPath $shim -Value "@echo off`r`nexit /b $ExitCode`r`n" -Encoding ASCII
             } else {
