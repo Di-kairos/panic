@@ -1,4 +1,4 @@
-# Pester 5 — install.ps1 (Windows-порт panic). Проверяем integrity- и signature-gate без сети:
+﻿# Pester 5 — install.ps1 (Windows-порт panic). Проверяем integrity- и signature-gate без сети:
 # PANIC_BASE_URL указывает на локальный каталог-«релиз», установка идёт во временный
 # каталог, правка PATH отключена. Покрытие integrity: happy-path, провал на расхождении хеша,
 # провал при отсутствии записи в SHA256SUMS (fail-closed). Покрытие signature: валидная/битая

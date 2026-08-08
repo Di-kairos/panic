@@ -1,4 +1,4 @@
-# panic.ps1 — one-step kill-switch (Paranoid Tools), Windows-порт (BETA).
+﻿# panic.ps1 — one-step kill-switch (Paranoid Tools), Windows-порт (BETA).
 # Зеркало macOS-версии (bash). Baseline: Windows PowerShell 5.1 (без PS7-only синтаксиса).
 #
 # Сценарий: граница / принуждение / «кто-то идёт». Одной командой `panic now` ПРЯЧЕТ и
