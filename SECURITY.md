@@ -52,7 +52,7 @@ limitations"):
 ## Supported versions
 
 The latest released version receives security fixes. panic is pre-1.0 (currently
-v0.1.14, work in progress); older tags are not maintained.
+v0.1.15, work in progress); older tags are not maintained.
 
 ## Verifying release signatures
 
