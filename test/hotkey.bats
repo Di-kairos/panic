@@ -92,10 +92,14 @@ run_hk() { run env PATH="$STUBS:$PATH" SKHD_CONFIG="$SKHD_CONFIG" bash "$SCRIPT"
   # mktemp (600) и владельца текущего пользователя вместо своих.
   printf 'alt - a : echo hi\n' > "$SKHD_CONFIG"
   chmod 0644 "$SKHD_CONFIG"
-  before="$(stat -f '%Lp' "$SKHD_CONFIG" 2>/dev/null || stat -c '%a' "$SKHD_CONFIG")"
+  # Права: GNU (Linux-CI) `stat -c` сначала, BSD (macOS) `-f` фолбэком — тот же канон,
+  # что в ghostdraft/test/ghostdraft.bats. Обратный порядок читался как рабочий, но на
+  # Linux `stat -f` — это --file-system: он не падает, а печатает отчёт по ФС со строкой
+  # `Free:`, и она между вызовами меняется. Сравнивались не права, а свободные блоки.
+  before="$(stat -c '%a' "$SKHD_CONFIG" 2>/dev/null || stat -f '%Lp' "$SKHD_CONFIG")"
   run_hk install
   run_hk uninstall
   [ "$status" -eq 0 ]
-  after="$(stat -f '%Lp' "$SKHD_CONFIG" 2>/dev/null || stat -c '%a' "$SKHD_CONFIG")"
+  after="$(stat -c '%a' "$SKHD_CONFIG" 2>/dev/null || stat -f '%Lp' "$SKHD_CONFIG")"
   [ "$before" = "$after" ]
 }
